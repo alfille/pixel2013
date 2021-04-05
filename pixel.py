@@ -56,22 +56,23 @@ class tab:
 
         # Scale (slider)
         self.controlrange() # get min, current and max
-        self.scale = tk.Scale( self.tab, from_=self.min, to=self.max, orient="horizontal", command=self.setlevel, resolution=(self.max-self.min)/50, bd=5, width=20, showvalue=0 )
+        self.scale = tk.Scale( self.tab, from_=self.min, to=self.max, orient="horizontal", resolution=(self.max-self.min)/50, bd=5, width=20, showvalue=0 )
         self.scale.set(self.start)
+        self.scale.config(command=self.setlevel )
         self.scale.pack( expand=1, fill="both", padx=5, pady=5 )
 
     def setlevel( self, val ):
         try:
-            r = subprocess.run([self.progname, int(val)], check = True )
+            r = subprocess.run([self.progname, str(int(val))], check = True )
         except:
-            messagebox.showerror(message="Cannot run program {}".format(self.progname))
+            messagebox.showerror(title="Set new value", message="Cannot run program {}".format(self.progname))
             raise
         
     def controlname( self ):
         try:
             r = subprocess.run([self.progname, '-c'], capture_output = True, text = True, check = True )
         except:
-            messagebox.showerror(message="Cannot run program {}".format(self.progname))
+            messagebox.showerror(title="Get control function", message="Cannot run program {}".format(self.progname))
             raise
         self.name = r.stdout.strip(" \n\t")
         
@@ -79,7 +80,7 @@ class tab:
         try:
             r = subprocess.run([self.progname, '-g'], capture_output = True, text = True, check = True )
         except:
-            messagebox.showerror(message="Cannot run program {}".format(self.progname))
+            messagebox.showerror(title="Get current value", message="Cannot run program {}".format(self.progname))
             raise
         self.min, self.start, self.max = [int(x) for x in r.stdout.strip(" \n\t").split(",")]        
 
@@ -92,7 +93,6 @@ def main(args):
     mainwindow = tk.Tk()
     mainwindow.title("Google Pixel 2013")
     tab("p2013dim")
-    messagebox.showerror()
 #    tab("keylights")
     mainwindow.mainloop()
 

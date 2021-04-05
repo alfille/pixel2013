@@ -64,27 +64,27 @@ int main( int argc, char **argv )
 	switch ( c ) {
 	    case 'h':
 		help() ;
-		exit(0) ;
+		return 0 ;
 	    case 'f':
 		printf("%s\n", ControlDir ControlCur );
 		exit(0) ;
 	    case 'c':
 		printf("%s\n", ControlItem );
-		exit(0) ;
+		return 0 ;
 	    case 'g':
 	    {
-		FILE * fcur = file_open( ControlDir ControlCur, "w" ) ;
+		FILE * fcur = file_open( ControlDir ControlCur, "r" ) ;
 		long current = value_read( fcur ) ;
 		fclose( fcur ) ;
 		
-		FILE * fmax = file_open( ControlDir ControlMax, "w" ) ;    
+		FILE * fmax = file_open( ControlDir ControlMax, "r" ) ;    
 		long maximum = value_read( fmax ) ;
 		fclose( fmax ) ;
 
 		long minimum = ControlMin ;
 
-		printf("%d,%d,%d\n", minimum,current,maximum );
-		exit(0) ;
+		printf("%ld,%ld,%ld\n", minimum,current,maximum );
+		return 0 ;
 	    }
 	    default:
 		break ;
