@@ -27,9 +27,9 @@ except:
     raise
 
 try:
-    import subprocess
+    from pathlib import Path
 except:
-    print( "Cannot load subprocess module, which should be part of the python standard distribution\n" )
+    print( "Cannot load pathlib/Path module, which should be part of the python standard distribution\n" )
     raise
 
 def signal_handler(signal, frame):
@@ -37,11 +37,66 @@ def signal_handler(signal, frame):
 
 mainwindow = None
 
+class device:
+    
+    basedir = "/sys/class/"
+    
+    def __init__( self, devdir ):
+        self.syspath = Path( type(self).basedir ) . joinpath( devdir )
+        self.choices = [ d for d in self.syspath.iterdir() if d.is_dir() and d.joinpath('brightness').exists() and d.joinpath('max_brightness').exists() ]
+        self.choice = None
+        self.default()
+
+    def default( self ):
+        if self.choices == []:
+            # ERROR no choices
+            self.choice = None
+            return
+        for d in self.choices:
+            t = d.joinpath('type')
+            if t.exists() and t.read_text().strip('\n') =='raw' :
+                self.control = d.stem
+                return
+        self.control = d[0]
+
+    @property
+    def max( self ):
+        if self.choice is None:
+            return 1
+        return self._max
+
+    @property
+    def brightness( self ):
+        if self.choice is None:
+            return 1
+        return int( self.bright.read_text().strip('\n') )
+    
+    @brightness.setter
+    def brightness( self, b ):
+        if self.choice is not None:
+            self.bright.write_text( "{}\n".format(str(b)) ) 
+            print( "{}\n".format(str(b)) ) 
+
+    @property
+    def control( self ):
+        if self.choice is None:
+            return None
+        return self.choice.stem
+
+    @control.setter
+    def control( self, stem ):
+        if stem not in [ d.stem for d in self.choices ]:
+            # ERROR bad choice, set to default
+            return self.default()
+        self.choice = Path( self.syspath ) . joinpath( stem )
+        self._max = int( self.choice.joinpath('max_brightness').read_text().strip('\n') )
+        self.bright = self.choice.joinpath('brightness')
+
 class tab:
     tabcontrol = None
     
-    def __init__( self, progname ):
-        self.progname = progname
+    def __init__( self, devdir, devname ):
+        self.title = devname
 
         # Notebook if doesn't exist
         if type(self).tabcontrol is None :
@@ -49,41 +104,28 @@ class tab:
             type(self).tabcontrol = ttk.Notebook( mainwindow )
 
         # This Tab
-        self.controlname() # Get name
+        self.device = device( devdir ) # Set device directory
+        print( self.device )
         self.tab = ttk.Frame( type(self).tabcontrol )
-        type(self).tabcontrol.add(self.tab, text = self.name )
+        type(self).tabcontrol.add(self.tab, text = self.title )
         type(self).tabcontrol.pack( expand=1, fill="both" )
 
+        # Test Control validity
+        if self.device.control is None:
+            self.bad = ttk.Label( self.tab, text = "{} control not found at {}".format(devname, devdir) )
+            self.bar.pack( expand = 1, fill="both", padx=10, pady=10 )
+            return
+
         # Scale (slider)
-        self.controlrange() # get min, current and max
-        self.scale = tk.Scale( self.tab, from_=self.min, to=self.max, orient="horizontal", resolution=(self.max-self.min)/50, bd=5, width=20, showvalue=0 )
-        self.scale.set(self.start)
+        # possibly get settings from init file
+        self.scale = tk.Scale( self.tab, from_=0, to=self.device.max, orient="horizontal", resolution=self.device.max/50., bd=5, width=20, showvalue=0 )
+        self.scale.set(self.device.brightness)
         self.scale.config(command=self.setlevel )
         self.scale.pack( expand=1, fill="both", padx=5, pady=5 )
 
     def setlevel( self, val ):
-        try:
-            r = subprocess.run([self.progname, str(int(val))], check = True )
-        except:
-            messagebox.showerror(title="Set new value", message="Cannot run program {}".format(self.progname))
-            raise
+        self.device.brightness = val
         
-    def controlname( self ):
-        try:
-            r = subprocess.run([self.progname, '-c'], capture_output = True, text = True, check = True )
-        except:
-            messagebox.showerror(title="Get control function", message="Cannot run program {}".format(self.progname))
-            raise
-        self.name = r.stdout.strip(" \n\t")
-        
-    def controlrange( self ):
-        try:
-            r = subprocess.run([self.progname, '-g'], capture_output = True, text = True, check = True )
-        except:
-            messagebox.showerror(title="Get current value", message="Cannot run program {}".format(self.progname))
-            raise
-        self.min, self.start, self.max = [int(x) for x in r.stdout.strip(" \n\t").split(",")]        
-
 def main(args):
     global mainwindow
     
@@ -92,7 +134,7 @@ def main(args):
 
     mainwindow = tk.Tk()
     mainwindow.title("Google Pixel 2013")
-    tab("p2013dim")
+    tab("backlight","Backlight")
 #    tab("keylights")
     mainwindow.mainloop()
 
