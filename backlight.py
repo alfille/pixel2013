@@ -54,7 +54,7 @@ class device:
             return
         for d in self.choices:
             t = d.joinpath('type')
-            if t.exists() and t.read_text().strip('\n') =='raw' :
+            if t.exists() and t.read_text().strip('\n') !='raw' :
                 self.control = d.stem
                 return
         self.control = d[0]
@@ -74,8 +74,12 @@ class device:
     @brightness.setter
     def brightness( self, b ):
         if self.choice is not None:
-            self.bright.write_text( "{}\n".format(str(b)) ) 
-            print( "{}\n".format(str(b)) ) 
+            br = int( float(b) + .5  ) # for rounding
+            if br > self._max:
+                br = self._max
+            if br < 0:
+                br = 0
+            self.bright.write_text( str(int(br)) ) 
 
     @property
     def control( self ):
@@ -91,6 +95,13 @@ class device:
         self.choice = Path( self.syspath ) . joinpath( stem )
         self._max = int( self.choice.joinpath('max_brightness').read_text().strip('\n') )
         self.bright = self.choice.joinpath('brightness')
+        
+    @property
+    def controllist( self ):
+        if self.choice is None:
+            return []
+        return [ d.stem for d in self.choices ]
+    
 
 class tab:
     tabcontrol = None
@@ -105,10 +116,25 @@ class tab:
 
         # This Tab
         self.device = device( devdir ) # Set device directory
-        print( self.device )
         self.tab = ttk.Frame( type(self).tabcontrol )
         type(self).tabcontrol.add(self.tab, text = self.title )
         type(self).tabcontrol.pack( expand=1, fill="both" )
+        
+        # create empty widget names
+        self.bad = None
+        self.scale = None
+        self.combo = None
+        self.controlvar = tk.StringVar()
+
+        self.control_panel()
+                
+    def control_panel( self ):
+        if self.bad is not None:
+            self.bad.destroy()
+        if self.scale is not None:
+            self.scale.destroy()
+        if self.combo is not None:
+            self.combo.destroy()
 
         # Test Control validity
         if self.device.control is None:
@@ -122,6 +148,15 @@ class tab:
         self.scale.set(self.device.brightness)
         self.scale.config(command=self.setlevel )
         self.scale.pack( expand=1, fill="both", padx=5, pady=5 )
+
+        self.combo = ttk.Combobox( self.tab, values=self.device.controllist, state="readonly",exportselection=0,textvariable=self.controlvar )
+        self.combo.set(self.device.control)
+        self.controlvar.trace( 'w', self.setcontrol )
+        self.combo.pack( expand=1, side="bottom", fill="x" ,padx=5, pady=5 )
+
+    def setcontrol( self, *args ):
+        self.device.control = self.combo.get()
+        self.control_panel()
 
     def setlevel( self, val ):
         self.device.brightness = val
