@@ -9,7 +9,7 @@
 try:
     import tkinter as tk
     from tkinter import ttk
-    from tkinter import messagebox
+    from tkinter import font
 except:
     print( "Cannot load TKinter (graphics) module, which should be part of the python standard distribution\n" )
     raise
@@ -45,7 +45,6 @@ class device:
         self.syspath = Path( type(self).basedir ) . joinpath( devdir )
         self.choices = [ d for d in self.syspath.iterdir() if d.is_dir() and d.joinpath('brightness').exists() and d.joinpath('max_brightness').exists() ]
         self.choice = None
-        self.default()
 
     def default( self ):
         if self.choices == []:
@@ -54,10 +53,10 @@ class device:
             return
         for d in self.choices:
             t = d.joinpath('type')
-            if t.exists() and t.read_text().strip('\n') !='raw' :
+            if t.exists() and t.read_text().strip('\n') =='raw' :
                 self.control = d.stem
                 return
-        self.control = d[0]
+        self.control = self.choices[0].stem
 
     @property
     def max( self ):
@@ -94,20 +93,45 @@ class device:
             return self.default()
         self.choice = Path( self.syspath ) . joinpath( stem )
         self._max = int( self.choice.joinpath('max_brightness').read_text().strip('\n') )
+        if self._max > 5 and self._max < 20:
+            self._delta = 1
+        else:
+            self._delta = self._max / 15.
         self.bright = self.choice.joinpath('brightness')
         
+    @property
+    def delta( self ):
+        return self._delta
+
     @property
     def controllist( self ):
         if self.choice is None:
             return []
         return [ d.stem for d in self.choices ]
+
+    @property
+    def title( self ):
+        return type(self).tabtitle
     
+class backlight(device):
+    tabtitle="Screen backlight"
+    def __init__( self ):
+        super().__init__("backlight")
+        self.default()
+
+class leds(device):
+    tabtitle="Key backlight"
+    def __init__( self ):
+        super().__init__("leds")
+        self.choices = [ c for c in self.choices if "lock" not in c.stem ]
+        self.default()
 
 class tab:
     tabcontrol = None
+    buttonfont = None
     
-    def __init__( self, devdir, devname ):
-        self.title = devname
+    def __init__( self, dev ):
+        self.device = dev
 
         # Notebook if doesn't exist
         if type(self).tabcontrol is None :
@@ -115,26 +139,25 @@ class tab:
             type(self).tabcontrol = ttk.Notebook( mainwindow )
 
         # This Tab
-        self.device = device( devdir ) # Set device directory
         self.tab = ttk.Frame( type(self).tabcontrol )
-        type(self).tabcontrol.add(self.tab, text = self.title )
+        type(self).tabcontrol.add(self.tab, text = self.device.title )
         type(self).tabcontrol.pack( expand=1, fill="both" )
         
         # create empty widget names
         self.bad = None
         self.scale = None
         self.combo = None
+        self.plus = None
+        self.minus = None
         self.controlvar = tk.StringVar()
 
         self.control_panel()
                 
     def control_panel( self ):
-        if self.bad is not None:
-            self.bad.destroy()
-        if self.scale is not None:
-            self.scale.destroy()
-        if self.combo is not None:
-            self.combo.destroy()
+        for w in [ self.plus, self.minus, self.bad, self.scale, self.combo ] :
+            if w is not None:
+                w.destroy()
+                w = None
 
         # Test Control validity
         if self.device.control is None:
@@ -144,19 +167,38 @@ class tab:
 
         # Scale (slider)
         # possibly get settings from init file
-        self.scale = tk.Scale( self.tab, from_=0, to=self.device.max, orient="horizontal", resolution=self.device.max/50., bd=5, width=20, showvalue=0 )
+        self.scale = tk.Scale( self.tab, from_=0, to=self.device.max, orient="horizontal", resolution=self.device.delta, bd=5, width=20, showvalue=0 )
         self.scale.set(self.device.brightness)
         self.scale.config(command=self.setlevel )
-        self.scale.pack( expand=1, fill="both", padx=5, pady=5 )
 
         self.combo = ttk.Combobox( self.tab, values=self.device.controllist, state="readonly",exportselection=0,textvariable=self.controlvar )
         self.combo.set(self.device.control)
         self.controlvar.trace( 'w', self.setcontrol )
+
+        if type(self).buttonfont is None:
+            plus = tk.Button( self.tab, text="+" )
+            buttonfont = font.Font( font=plus.cget("font") ).actual()
+            type(self).buttonfont = font.Font( family=buttonfont['family'], weight='bold', size=4*buttonfont['size'] )
+            print(type(self).buttonfont.actual() )
+            plus.destroy()
+        
+        self.plus = tk.Button( self.tab, text="+", font=type(self).buttonfont, command=self.plusbutton )
+        self.minus = tk.Button( self.tab, text="-", font=type(self).buttonfont, command=self.minusbutton )
+        
+        self.plus.pack( expand=1, fill="y", padx=2, pady=2, side="right")
+        self.minus.pack( expand=1, fill="y", padx=2, pady=2, side="left")
+        self.scale.pack( expand=1, fill="both", padx=5, pady=5 )
         self.combo.pack( expand=1, side="bottom", fill="x" ,padx=5, pady=5 )
 
     def setcontrol( self, *args ):
         self.device.control = self.combo.get()
         self.control_panel()
+
+    def plusbutton( self, *args ):
+        self.scale.set( self.device.brightness + self.device.delta )
+
+    def minusbutton( self, *args ):
+        self.scale.set( self.device.brightness - self.device.delta )
 
     def setlevel( self, val ):
         self.device.brightness = val
@@ -169,8 +211,9 @@ def main(args):
 
     mainwindow = tk.Tk()
     mainwindow.title("Google Pixel 2013")
-    tab("backlight","Backlight")
-#    tab("keylights")
+    mainwindow.resizable(True,True)    
+    tab(backlight())
+    tab(leds())
     mainwindow.mainloop()
 
 if __name__ == "__main__":

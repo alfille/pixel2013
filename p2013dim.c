@@ -92,9 +92,9 @@ int main( int argc, char **argv )
     }
 
     if ( optind != argc-1 ) {
-	help() ;
-	fprintf( stderr, "\nNeeds a single numeric argument\n");
-	exit(1) ;
+        help() ;
+        fprintf( stderr, "\nNeeds a single numeric argument\n");
+        exit(1) ;
     }
 
     // read brightness value from command line
