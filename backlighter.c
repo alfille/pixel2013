@@ -59,7 +59,7 @@
 /* CONFIGURATION SECTION */
 
 #ifndef FULL_PATH       /* so that this can be specified from the Makefile */
-#define FULL_PATH       "/usr/bin/backlight.py"
+#define FULL_PATH       "/usr/bin/pybacklight.py"
 #endif
 #ifndef UMASK
 #define UMASK           077

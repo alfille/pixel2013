@@ -179,7 +179,6 @@ class tab:
             plus = tk.Button( self.tab, text="+" )
             buttonfont = font.Font( font=plus.cget("font") ).actual()
             type(self).buttonfont = font.Font( family=buttonfont['family'], weight='bold', size=4*buttonfont['size'] )
-            print(type(self).buttonfont.actual() )
             plus.destroy()
         
         self.plus = tk.Button( self.tab, text="+", font=type(self).buttonfont, command=self.plusbutton )
@@ -210,7 +209,9 @@ def main(args):
     signal.signal(signal.SIGINT, signal_handler)
 
     mainwindow = tk.Tk()
-    mainwindow.title("Google Pixel 2013")
+    mainwindow.title("Laptop Brightness")
+    photo = tk.PhotoImage(file = "/usr/share/icons/hicolor/64x64/backlighter.png")
+    mainwindow.iconphoto(False, photo)
     mainwindow.resizable(True,True)    
     tab(backlight())
     tab(leds())
