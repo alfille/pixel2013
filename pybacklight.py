@@ -36,15 +36,19 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 mainwindow = None
+iconfile = "/usr/share/icons/hicolor/64x64/backlighter.png"
 
 class device:
     
     basedir = "/sys/class/"
     
     def __init__( self, devdir ):
-        self.syspath = Path( type(self).basedir ) . joinpath( devdir )
-        self.choices = [ d for d in self.syspath.iterdir() if d.is_dir() and d.joinpath('brightness').exists() and d.joinpath('max_brightness').exists() ]
         self.choice = None
+        self.choices = []
+        self.syspath = Path( type(self).basedir ) . joinpath( devdir )
+        if self.syspath.exists():
+            self.choices = [ d for d in self.syspath.iterdir() if d.is_dir() and d.joinpath('brightness').exists() and d.joinpath('max_brightness').exists() ]
+            self.default()
 
     def default( self ):
         if self.choices == []:
@@ -117,13 +121,14 @@ class backlight(device):
     tabtitle="Screen backlight"
     def __init__( self ):
         super().__init__("backlight")
-        self.default()
 
 class leds(device):
     tabtitle="Key backlight"
     def __init__( self ):
         super().__init__("leds")
+        # further restrict choices
         self.choices = [ c for c in self.choices if "lock" not in c.stem ]
+        # reselect default
         self.default()
 
 class tab:
@@ -161,8 +166,8 @@ class tab:
 
         # Test Control validity
         if self.device.control is None:
-            self.bad = ttk.Label( self.tab, text = "{} control not found at {}".format(devname, devdir) )
-            self.bar.pack( expand = 1, fill="both", padx=10, pady=10 )
+            self.bad = ttk.Label( self.tab, text = "{} control not found at {}".format(self.device.title, self.device.syspath) )
+            self.bad.pack( expand = 1, fill="both", padx=10, pady=10 )
             return
 
         # Scale (slider)
@@ -204,14 +209,16 @@ class tab:
         
 def main(args):
     global mainwindow
+    global iconfile
     
     # keyboard interrupt
     signal.signal(signal.SIGINT, signal_handler)
 
     mainwindow = tk.Tk()
     mainwindow.title("Laptop Brightness")
-    photo = tk.PhotoImage(file = "/usr/share/icons/hicolor/64x64/backlighter.png")
-    mainwindow.iconphoto(False, photo)
+    if Path(iconfile).exists():
+        photo = tk.PhotoImage(file = iconfile)
+        mainwindow.iconphoto(False, photo)
     mainwindow.resizable(True,True)    
     tab(backlight())
     tab(leds())
