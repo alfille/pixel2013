@@ -1,4 +1,4 @@
-    // p2013dim
+// p2013dim
 // Pixel 2013 backlight command
 // Paul Alfille 2021
 // github.com/alfille/pixel2013
@@ -8,46 +8,59 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
-#define ControlDir "/sys/class/backlight/intel_backlight/"
-#define ControlMin 0
+#define BackDir "/sys/class/backlight/intel_backlight/"
+#define KeyDir "/sys/class/leds/chromeos::kbd_backlight/"
+
 #define ControlCur "brightness"
 #define ControlMax "max_brightness"
-#define ControlItem "backlight level"
 
 char * progname = "program" ; // should be redirected
 
 void help( void )
 {
-    fprintf( stderr, "%s -- set the %s level for the Google Pixel Chromebook (2013)\n" , progname , ControlItem ) ;
+    fprintf( stderr, "%s -- set the screen or keyboard brightness level for the Google Pixel Chromebook (2013)\n" , progname ) ;
     fprintf( stderr, "\n") ;
-    fprintf( stderr, "Writes to %s -- needs root privileges\n", ControlDir ControlCur ) ;
+    fprintf( stderr, "Writes to /sys/class -- needs root privileges\n" ) ;
     fprintf( stderr, "by Paul H Alfille 2021\n") ;
     fprintf( stderr, "\n") ;
+    fprintf( stderr, "\t%s -b -- show backlight percent\n", progname ) ;
+    fprintf( stderr, "\t%s -b 43-- set backlight percent\n", progname ) ;
+    fprintf( stderr, "\n") ;
+    fprintf( stderr, "\t%s -k -- show keylight percent\n", progname ) ;
+    fprintf( stderr, "\t%s -k 43-- set keylight percent\n", progname ) ;
+    fprintf( stderr, "\n") ;
+    fprintf( stderr, "\t%s -b (screen backlight) is assumed if k or b not specified\n", progname ) ;
+    fprintf( stderr, "\n") ;
     fprintf( stderr, "\t%s -h -- this help\n", progname ) ;
-    fprintf( stderr, "\t%s -f -- control File name (%s)\n", progname, ControlDir ControlCur ) ;
-    fprintf( stderr, "\t%s -c -- what is being Controlled (%s)\n", progname, ControlItem ) ;
-    fprintf( stderr, "\t%s -g -- Current state, 3 values-> min,current,max\n", progname ) ;
-    fprintf( stderr, "\t%s 200 -- brightness 200 (choose your value)\n", progname ) ;
 }
 
-FILE * file_open( char * name, char * mode )
+FILE * file_open( char * dir, char * name, char * mode )
 {
-    FILE * f = fopen( name, mode ) ;
+	char Path[1024] ;
+	FILE * f;
+	
+	strcpy( Path, dir ) ;
+	strcat( Path, name ) ;
+    f = fopen( Path, mode ) ;
     if ( f == NULL ) {
-	fprintf( stderr, "Cannot open %s: ", name ) ;
+	fprintf( stderr, "Cannot open %s: ", Path ) ;
 	perror( NULL ) ;
 	exit(1) ;
     }
     return f ;
 }
 
-long value_read( FILE * file )
+long value_read( char * dir, char * name )
 {
+    FILE * file = file_open( dir, name, "r" ) ;
     char buffer[64] ;
     char * str = fgets( buffer, sizeof(buffer), file ) ;
+
+    fclose( file ) ;
     if ( str == buffer ) {
-	return strtol( buffer, NULL, 10 ) ;
+		return strtol( buffer, NULL, 10 ) ;
     }
     perror("Trouble reading file" ) ;
     exit(1) ;
@@ -60,56 +73,76 @@ int main( int argc, char **argv )
     
     // Arguments
     int c ;
-    while ( (c = getopt( argc, argv, "hfcg" )) != -1 ) {
-	switch ( c ) {
-	    case 'h':
-		help() ;
-		return 0 ;
-	    case 'f':
-		printf("%s\n", ControlDir ControlCur );
-		exit(0) ;
-	    case 'c':
-		printf("%s\n", ControlItem );
-		return 0 ;
-	    case 'g':
-	    {
-		FILE * fcur = file_open( ControlDir ControlCur, "r" ) ;
-		long current = value_read( fcur ) ;
-		fclose( fcur ) ;
-		
-		FILE * fmax = file_open( ControlDir ControlMax, "r" ) ;    
-		long maximum = value_read( fmax ) ;
-		fclose( fmax ) ;
+	char * endptr ;
+	long bright = -1. ;
+	long max_bright ;
+	char * Dir = BackDir ;
+	
+    while ( (c = getopt( argc, argv, ":b:k:h" )) != -1 ) {
+		switch ( c ) {
+			case 'h':
+				help() ;
+				return 0 ;
+			case 'b':
+				Dir = BackDir ;
+				bright = strtol( optarg, &endptr, 10 ) ;
+				if ( (optarg == endptr) || (bright<0.) || (bright > 100.) ) {
+					help() ;
+					fprintf( stderr, "\nInvalid numeric argument: %s\n", optarg );
+					exit(1) ;
+				}
+				break ;
+			case 'k':
+				Dir = KeyDir ;
+				bright = strtol( optarg, &endptr, 10 ) ;
+				if ( (optarg == endptr) || (bright<0.) || (bright > 100.) ) {
+					help() ;
+					fprintf( stderr, "\nInvalid numeric argument: %s\n", optarg );
+					exit(1) ;
+				}
+				break ;
+			case ':':
+				switch(optopt) {
+					case 'b':
+						Dir = BackDir ;
+						break ;
+					case 'k':
+						Dir = KeyDir ;
+						break ;
+					default:
+						help() ;
+						exit(1);
+				}
+				break ;
+			default:
+				help() ;
+				return 0 ;
+			break ;
+		}
+    }
 
-		long minimum = ControlMin ;
-
-		printf("%ld,%ld,%ld\n", minimum,current,maximum );
-		return 0 ;
-	    }
-	    default:
-		break ;
+    if ( argv[optind] != NULL ) {
+		bright = strtol( argv[optind], &endptr, 10 ) ;
+		if ( (argv[optind] == endptr) || (bright<0.) || (bright>100.) ) {
+			help() ;
+			fprintf( stderr, "\nInvalid numeric argument: %s\n", argv[optind] );
+			exit(1) ;
+		}
 	}
-    }
 
-    if ( optind != argc-1 ) {
-        help() ;
-        fprintf( stderr, "\nNeeds a single numeric argument\n");
-        exit(1) ;
-    }
-
-    // read brightness value from command line
-    char * endptr ;
-    long bright = strtol( argv[optind], &endptr, 10 ) ;
-    if ( argv[optind] == endptr ) {
-	help() ;
-	fprintf( stderr, "\nInvalid numeric argument: %s\n", argv[optind] );
-	exit(1) ;
-    }
+	// max
+	max_bright = value_read( Dir, ControlMax ) ;
+	
+	if ( bright < 0. ) {
+		long cur = value_read( Dir, ControlCur ) ;
+		printf( "%3.0f\n",100.*cur/max_bright ) ;
+		return 0 ;
+	}
     
     // write brightness to control file
-    FILE * sys = file_open( ControlDir ControlCur, "a" ) ;
-    if ( fprintf( sys, "%ld\n", bright ) < 1 ) {
-	perror("Trouble writing to "ControlDir ControlCur ) ;
+    FILE * sys = file_open( Dir, ControlCur, "a" ) ;
+    if ( fprintf( sys, "%ld\n", (long int) (bright*max_bright*.01) ) < 1 ) {
+		perror("Trouble writing to file" ) ;
     }
     fclose( sys ) ;
     return 0 ;
