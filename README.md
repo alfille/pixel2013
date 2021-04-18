@@ -22,13 +22,13 @@ This program addresses screen and keyboard brightness.
 
 ## Project has moved
 * This [project](https://github.com/alfille/pixel2013) is feature complete
- * Supports the Google Pixel Chromebook 2013 version
- * Further work should be in the new project
- * Any improvements there will be back-ported
+  * Supports the Google Pixel Chromebook 2013 version
+  * Further work should be in the new project
+  * Any improvements there will be back-ported
 * New name **backlighter**
- * A "fork" of this project
- * Supports more laptops
- * Venue for project development
+  * A "fork" of this project
+  * Supports more laptops
+  * Venue for project development
 * See [backlighter](http://github.com/alfille/backlighter)
 
 # Install
@@ -36,9 +36,9 @@ This program addresses screen and keyboard brightness.
 * Compile `make all`
 * Install `sudo make install`
 * This wil; install
- * command line tools
- * graphics tools
- * menu entry 	
+  * command line tools
+  * graphics tools
+  * menu entry 	
 * Full script:
 
 ```
@@ -48,10 +48,10 @@ make all
 sudo make install
 ```
 * The following python3 modules are required (but fortunately are part of the standard distribution)
- * sys
- * signal
- * tkinter tkinter.ttk tkinter.font
- * pathlib.Path
+  * sys
+  * signal
+  * tkinter tkinter.ttk tkinter.font
+  * pathlib.Path
 
 # Usage
 ## command line tool
@@ -78,15 +78,15 @@ by Paul H Alfille 2021
 ![backlighter](screen.jpg)
 
 * Program name is backlighter
- * installed in /usr/bin
- * setsuid (i.e. root privileges)
- * calls python3 program `pybacklight.py` in turn
+  * installed in /usr/bin
+  * setsuid (i.e. root privileges)
+  * calls python3 program `pybacklight.py` in turn
 * `pybacklight.py` is the actual program displayed 
- * For problems, run `sudo python3 ./pybacklight.py` from a terminal to see error output
- * python3 program with tkinter graphics so should need very few additional libraries
+  * For problems, run `sudo python3 ./pybacklight.py` from a terminal to see error output
+  * python3 program with tkinter graphics so should need very few additional libraries
 * Desktop icon and menu support
- * backlighter.desktop is included
- * menu entry should be added automatically if window manager supports OpenDesktop protocols
+  * backlighter.desktop is included
+  * menu entry should be added automatically if window manager supports OpenDesktop protocols
 
 ## Security
 The controls require root access and so are setsuid programs (which is a possible security risk), but allow very circumscribed and sanitized input.
